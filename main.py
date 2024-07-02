@@ -1,35 +1,35 @@
 import csv
 
+#1
 def caractere_interzise(c_i, date):
     for cuvant in date:
         for j in cuvant:
             if j in c_i:
                 return 1
     return 0
-
+#2
 def validare_nume(nume):
     for c in nume:
         if c.isdigit():
             return 1
     return 0
-
+#3
 def validare_prenume(date):
     for cuvant in date:
         for c in cuvant:
-            if c.isdigit():
                 return 1
     return 0
-
+#4
 def cnp_numar(cnp):
     if not cnp.isnumeric():
         return 1
     return 0
-
+#5
 def lunigme_cnp(cnp):
     if len(cnp) != 13:
         return 1
     return 0
-
+#6
 def validare_ultima_cifra_cnp(verif, cnp):
     alg = []
     for nr in range(12):
@@ -93,6 +93,9 @@ dict = {}
 date = []
 cursant = input("Introduceti date cursant:")
 impartire_date(cursant, date)
+for i in range(len(date)-1):
+    if date[i][0]!= date[i][0].upper():
+        date[i]= date[i].capitalize()
 validare(dict, date)
 nume_col=dict.keys()
 if dict:
