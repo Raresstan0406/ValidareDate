@@ -1,0 +1,4 @@
+ID  | Nume | Prenume 1 | Prenume 2 | CNP
+1 | STAN | Daniel | Alex | 3478248824187
+2 | Popescu | Ion | - | 3478248824187
+3 | Adina | Iliescu | - | 3478248824187
