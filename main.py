@@ -1,6 +1,7 @@
 import csv
 import datetime
 import os
+from functools import cmp_to_key
 
 
 # 1
@@ -56,8 +57,26 @@ def validare_ultima_cifra_cnp(verif, cnp):
         return 1
     return 0
 
+def verificare_duplicate(director_date, date):
+    lista_fisiere = os.listdir(director_date)
+    for fisier in lista_fisiere:
+        cale = os.path.join(director_date, fisier)
+        with open(cale, 'r') as fisier_verificat:
+            if '.txt' in cale:
+                fisier_verificat_split = fisier_verificat.read().splitlines()
+                for line in fisier_verificat_split:
+                    linie = line.split(' | ')
+                    if date[-1] == linie[-1]:
+                        return 1, cale
+            elif '.csv' in cale:
+                citire = csv.DictReader(fisier_verificat)
+                for line in citire:
+                    if date[-1] == line['CNP']:
+                        return 1, cale
+    return 0, lista_fisiere[0]
 
-def validare(index, dict, date):
+
+def validare(index, dict, date, director_date):
     ok = 0
     if caractere_interzise('+@!?\/', date) == 1:
         print("Datele contin caractere interzise")
@@ -77,19 +96,25 @@ def validare(index, dict, date):
     elif validare_ultima_cifra_cnp('279146358279', date[-1]) == 1:
         print("CNP-ul nu este valid")
         ok = 1
+    else:
+        verificare, fisier = verificare_duplicate(director_date, date)
+        if verificare == 1:
+            nume = os.path.basename(fisier)
+            print(f"Cursantul exista deja in fisierul '{nume}'")
+            ok = 1
     if ok == 0:
         if len(date) == 3:
-            dict.update({"ID ": index,
-                         "Nume ": date[0],
-                         "Prenume 1 ": date[1],
-                         "Prenume 2 ": "-",
-                         "CNP ": date[2]})
+            dict.update({"ID": index,
+                         "Nume": date[0],
+                         "Prenume 1": date[1],
+                         "Prenume 2": "-",
+                         "CNP": date[2]})
         elif len(date) == 4:
-            dict.update({"ID ": index,
-                         "Nume ": date[0],
-                         "Prenume 1 ": date[1],
-                         "Prenume 2 ": date[2],
-                         "CNP ": date[3]})
+            dict.update({"ID": index,
+                         "Nume": date[0],
+                         "Prenume 1": date[1],
+                         "Prenume 2": date[2],
+                         "CNP": date[3]})
 
 
 def impartire_prenume(prenume, p):
@@ -111,21 +136,32 @@ def impartire_date(cursant, date):
         for cuv in date_prime:
             date.append(cuv)
 
-
-def delete(lista):
+def introducere(cursant, date, index):
+    impartire_date(cursant, date)
+    for i in range(len(date) - 1):
+        if date[i][0] != date[i][0].upper():
+            date[i] = date[i].capitalize()
+    validare(index, dict, date, director_date)
+    if dict:
+        index = index + 1
+    lista.append(dict)
+    return lista, index
+def delete(lista, garbage):
     how_to = input("dupa ID/CNP:")
     if how_to == "ID":
         cursant_pt_sters = input("ID cursant: ")
         for cursant in lista:
-            if cursant["ID "] == int(cursant_pt_sters):
-                    lista.remove(cursant)
-                    garbage.append(cursant)
+            if cursant['ID'] == int(cursant_pt_sters):
+                garbage.append(cursant)
+                lista.remove(cursant)
+                break
     elif how_to == "CNP":
         cursant_pt_sters = input("CNP cursant: ")
         for cursant in lista:
-            if cursant["CNP "] == cursant_pt_sters:
-                lista.remove(cursant)
+            if cursant['CNP'] == cursant_pt_sters:
                 garbage.append(cursant)
+                lista.remove(cursant)
+                break
 def saved_csv(director, lista, date_curente):
     director_csv = os.path.join(director, f'{date_curente}.csv')
     for dictionar in lista:
@@ -162,21 +198,24 @@ def SAVE(director, lista):
     if decizie == "TXT":
         saved_txt(director, lista, date_curente)
 
-lista_gata_salvare = []
-lista_update = []
-lista = []
-director = r"C:\Users\RARES\Desktop\date_cursanti"
-lista_fisiere = os.listdir(director)
-index = 1
-garbage = []
-while True:
-    dict = {}
-    date = []
-    lista_fisiere = os.listdir(director)
+def sortare(fisier1, fisier2):
+    fisier1_split = fisier1.split("_")
+    fisier2_split = fisier2.split("_")
+    ultima1 = fisier1_split[6].split(".")
+    ultima2 = fisier2_split[6].split(".")
+    data_ora_1 = (int(fisier1_split[2]), int(fisier1_split[3]), int(fisier1_split[4]), int(fisier1_split[5]), int(ultima1[0]))
+    data_ora_2 = (int(fisier2_split[2]), int(fisier2_split[3]), int(fisier2_split[4]), int(fisier2_split[5]), int(ultima2[0]))
+    if data_ora_1 < data_ora_2:
+        return 1
+    elif data_ora_1 > data_ora_2:
+        return -1
+    else:
+        return 0
+def indexare(lista, lista_fisiere, index):
+    sortate = sorted(lista_fisiere, key=cmp_to_key(sortare))
     if not lista:
-        if lista_fisiere:
-            cale_completa = os.path.join(director, lista_fisiere[-1])
-            print(cale_completa)
+        if sortate:
+            cale_completa = os.path.join(director_date, sortate[0])
             with open(cale_completa, 'r') as fisier_dorit:
                 if '.txt' in cale_completa:
                     fisier_dorit_split = fisier_dorit.read().splitlines()
@@ -187,31 +226,41 @@ while True:
                     citire = csv.DictReader(fisier_dorit)
                     for rand in citire:
                         ultimul_rand = rand
-                    index = int(ultimul_rand["ID "]) + 1
+                    index = int(ultimul_rand['ID']) + 1
+    return index
+
+def gunoi(director_g, garbage):
+    director_garbage = os.path.join(director_g, 'garbage.csv')
+    for dictionar in garbage:
+        nume_col = dictionar.keys()
+        if dictionar:
+            with open(director_garbage, 'a', newline='') as file:
+                w = csv.DictWriter(file, fieldnames=nume_col)
+                if file.tell() == 0:
+                    w.writeheader()
+                w.writerow(dictionar)
+
+
+lista = []
+director_date = r"C:\Users\RARES\Desktop\DATE+GARBAGE\date_cursanti"
+director_g = r"C:\Users\RARES\Desktop\DATE+GARBAGE"
+index = 1
+garbage = []
+while True:
+    dict = {}
+    date = []
+    lista_fisiere = os.listdir(director_date)
+    index = indexare(lista, lista_fisiere, index)
     cursant = input("Introduceti date cursanti sau una din comenzile EXIT/SAVE/DELETE/GARBAGE:")
     if cursant == "EXIT":
         break
     elif cursant == "SAVE":
-        SAVE(director, lista)
+        SAVE(director_date, lista)
+        print(lista)
     elif cursant == "DELETE":
-        delete(lista)
+        delete(lista, garbage)
     elif cursant == "GARBAGE":
-        director_garbage = os.path.join(director, 'garbage.csv')
-        for dictionar in garbage:
-            nume_col = dictionar.keys()
-            if dictionar:
-                with open(director_garbage, 'a', newline='') as file:
-                    w = csv.DictWriter(file, fieldnames=nume_col)
-                    if file.tell() == 0:
-                        w.writeheader()
-                    w.writerow(dictionar)
+        gunoi(director_g, garbage)
     else:
-        impartire_date(cursant, date)
-        for i in range(len(date) - 1):
-            if date[i][0] != date[i][0].upper():
-                date[i] = date[i].capitalize()
-        validare(index, dict, date)
-        if dict:
-            index = index + 1
-        lista.append(dict)
+        lista, index = introducere(cursant, date, index)
         print(lista)
